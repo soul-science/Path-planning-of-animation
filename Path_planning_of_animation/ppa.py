@@ -20,6 +20,17 @@ import bisect
 
 
 class PPA(object):
+    """
+        路径规划算法集合(PPA)
+        Contains:
+            Dijkstra
+            BFS
+            DFS
+            A-Star
+            DA-Star
+            Faa(No Barriers)
+            JPS(Jump Search)
+    """
     def __init__(self, queue):
         self.queue = queue
         self.start = None
@@ -36,6 +47,14 @@ class PPA(object):
                            2: [[-1, 1], [-1, 0], [-1, -1], [1, 0], [1, 1], [0, 1], [1, -1], [0, -1]]}
 
     def set(self, size, start, end, barriers, sqrt=1):
+        """
+            设置寻路算法的参数:
+                size: 迷宫大小
+                start: 起点
+                end: 终点
+                barriers: 障碍物
+                sqrt: 距离sqrt(次方)
+        """
         self.start = start
         self.end = end
         self.size = size
@@ -105,6 +124,16 @@ class PPA(object):
         return path[::-1]
 
     def bfs(self):
+        """
+            func: bfs(广度优先算法)
+            step:
+                step1: 初始化vis和path
+                step2: 进行循环, 运行子算法__bfs
+                    if 路径集的最后一个的最后一个点为终点 => break
+                    else: => continue
+                step3: 在所有到达终点的路径中找出最优, 即为最优(根据bfs特性此最优为全局最优)
+                step4: 返回最优路径
+        """
         vis = [[0] * self.size[1] for _ in range(self.size[0])]
         path = [[self.start]]
 
@@ -126,6 +155,15 @@ class PPA(object):
         return m_path[0]
 
     def __bfs(self, path, vis):
+        """
+        func: bfs子算法
+        step:
+            for:
+                step1: 循环path当中的所有路径集去遍历新的适合的路径
+                    if 有路径已经到达终点, 则置flag为True => 添加一个结束判断符
+                    else: pass
+                step2: 返回新的路径集合
+        """
         flag = False
         new_path = []
         points = []
@@ -156,9 +194,29 @@ class PPA(object):
         return new_path
 
     def dfs(self):
+        """
+            func: dfs(深度优先算法)
+            step:
+                step1: 运行子算法__dfs
+                step2: 返回子算法得到的最优路径
+        """
         return self.__dfs([self.start])
 
     def __dfs(self, path):
+        """
+            func: __dfs(dfs子算法)
+            step:
+                step1: 判断路径最后一个点是否为终点
+                    if True: => 返回路径
+                    else: => pass
+                for: 对各个方向进行一个循环
+                    step2: 判断点是否合法
+                        if True: => 递归 __dfs(path)
+                        else False: => continue
+                    step3: 判断first是否返回了路径
+                        if True: => 返回路径集合(沿着递归方向)
+                        else: continue
+        """
         if path[-1] == self.end:
             self.queue.put([path, 1])
             return path
@@ -176,7 +234,17 @@ class PPA(object):
 
     def best_fs(self):
         """
-            最佳优先算法
+            func: best_first_search(最佳优先算法)
+            step1: 初始化
+            while: 当前点不为终点进行
+                for: 对于当前节点的各个方向进行循环
+                    step2: 判断新点是否符合
+                        if True:
+                            step3: 将点按启发函数g(x)的值由小到大加入到standby列表中
+                        else: continue
+                    step4: 从standby列表中弹出第一个点(启发值最小点)加入到最优路径中
+                    step5: 替换当前节点
+            step5: 返回得到的路径(无障碍物时必最优)
         """
 
         vis = [[0] * self.size[1] for _ in range(self.size[0])]
@@ -206,11 +274,11 @@ class PPA(object):
 
     def astar(self):
         """
-            func: A*算法
+            func: A-star(A*算法)
             step:
-                step0: 开始循环
-                for:
-                    for:
+                step0: 初始化
+                while: 同上
+                    for: 同上
                         step1: 判断是否出界, 是否为障碍物
                         step2: 得到从起始点到该点的距离(父节点到该节点距离)
                             1) line(父) + g(point) + h(point)
@@ -220,9 +288,9 @@ class PPA(object):
                     step4: 判断在line中是否有该节点，如果无该节点，则添加进入line，如果有则比较:
                         if > : => 不管
                         if < : => 替换父节点
-                    step5: 如果该节点为end则退出循环
+                    step6: 替换当前节点
 
-                step6: 计算路径
+                step6: 返回最优路径
         """
         line = {self.start: [None, 0]}
         standby = []
@@ -265,18 +333,16 @@ class PPA(object):
 
     def dastar(self):
         """
-            func: Double A*
+            func: Double A-star(DA*算法)
             step:
                 step0: 初始化
                 for:
-                    step0: 对障碍物横竖进行分类，随机一个符合条件的中间节点
-                        satisfy(Manhattan): 在最大到横向或者竖向存在一个通路，
                     step1: 对起点后终点同时同步进行A*寻路算法
                     step2: 判断两边当前的搜索点是否在对方的已搜索列表中
                         if True: => break
                         else: => continue
 
-                step3:  return path
+                step3:  返回最优路径
 
         """
 
@@ -353,10 +419,16 @@ class PPA(object):
 
     def faa(self):
         """
-            根据if条件判断找到无障碍时的最短路径(仅适用于无障碍路径)
+            func: faa(根据if条件判断找到无障碍时的最短路径算法(仅适用于无障碍路径))
+            step:
+                step1: 初始化
+                step2: 根据当前点与终点的位置关系来进行移动
+                    criterion(准则):
+                        1. 对于曼哈顿距离: 先上下移动, 后左右移动
+                        2. 对于欧氏距离: 先对角方向移动, 后左右移动
+                step3: 返回路径
         """
         point = list(self.start)
-        # blocks = []
         path = [self.start]
 
         while tuple(point) != self.end:
