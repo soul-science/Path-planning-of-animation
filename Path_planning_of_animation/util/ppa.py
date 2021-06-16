@@ -32,6 +32,7 @@ class PPA(object):
             Faa(No Barriers)
             JPS(Jump Search)
     """
+
     def __init__(self, queue):
         self.queue = queue
         self.start = None
@@ -39,13 +40,48 @@ class PPA(object):
         self.size = None
         self.barriers = None
         self.sqrt = None
-        self.d = lambda a, b: math.pow(abs(a[0] - b[0]) ** self.sqrt + abs(a[1] - b[1]) ** self.sqrt, 1 / self.sqrt)
-        self.g = lambda a: math.pow(abs(a[0] - self.start[0]) ** self.sqrt + abs(a[1] - self.start[1]) ** self.sqrt,
-                                    1 / self.sqrt)
-        self.h = lambda a: math.pow(abs(a[0] - self.end[0]) ** self.sqrt + abs(a[1] - self.end[1]) ** self.sqrt,
-                                    1 / self.sqrt)
         self.directions = {1: [[-1, 0], [1, 0], [0, -1], [0, 1]],
-                           2: [[-1, 1], [-1, 0], [-1, -1], [1, 0], [1, 1], [0, 1], [1, -1], [0, -1]]}
+                           2: [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1], [-1, 1], [1, -1], [-1, -1]]}
+
+        self.jps_direction = [(0, 1), (0, -1), (-1, 0), (1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
+        self.jps_all_barriers = [
+            [3, 2],
+            [3, 2],
+            [0, 1],
+            [0, 1],
+            [2, 1],
+            [2, 0],
+            [3, 1],
+            [3, 0]
+        ]
+        self.jps_all_neighbors = [
+            [4, 6],
+            [5, 7],
+            [6, 7],
+            [4, 5],
+            [6, 5],
+            [7, 4],
+            [4, 7],
+            [5, 6]
+        ]
+
+        self.corner_go = [
+            [0, 3],
+            [1, 3],
+            [0, 2],
+            [1, 2]
+        ]
+
+    def d(self, a, b):
+        return math.pow(abs(a[0] - b[0]) ** self.sqrt + abs(a[1] - b[1]) ** self.sqrt, 1 / self.sqrt)
+
+    def g(self, a):
+        return math.pow(abs(a[0] - self.start[0]) ** self.sqrt + abs(a[1] - self.start[1]) ** self.sqrt,
+                        1 / self.sqrt)
+
+    def h(self, a):
+        return math.pow(abs(a[0] - self.end[0]) ** self.sqrt + abs(a[1] - self.end[1]) ** self.sqrt,
+                        1 / self.sqrt)
 
     def set(self, size, start, end, barriers, sqrt=1):
         """
@@ -147,7 +183,7 @@ class PPA(object):
             if each[-1] == self.end:
                 d = 0
                 for i in range(len(each) - 1):
-                    d += self.d(each[i], each[i+1])
+                    d += self.d(each[i], each[i + 1])
                 if d < m_path[1]:
                     m_path = [each, d]
 
@@ -225,7 +261,8 @@ class PPA(object):
         for direction in self.directions[self.sqrt]:
             point = (path[-1][0] + direction[0], path[-1][1] + direction[1])
             p_x, p_y = math.floor(point[0]), math.floor(point[1])
-            if 0 <= point[0] < self.size[0] and 0 <= point[1] < self.size[1] and self.barriers[p_x][p_y] != 1 and point not in path:
+            if 0 <= point[0] < self.size[0] and 0 <= point[1] < self.size[1] and self.barriers[p_x][
+                p_y] != 1 and point not in path:
                 path.append(point)
                 self.queue.put([[point], 0])
                 first = self.__dfs(path.copy())
@@ -377,7 +414,7 @@ class PPA(object):
                 if vis_2[x_2][y_2] != -1 and self.barriers[x_2][y_2] != 1:
                     point = (current_2[0] + direction[0], current_2[1] + direction[1])
                     px_2, py_2 = math.floor(point[0]), math.floor(point[1])
-                    if 0 <= point[0] < self.size[0] and 0 <= point[1] < self.size[1] and self.barriers[px_2][py_2] != 1\
+                    if 0 <= point[0] < self.size[0] and 0 <= point[1] < self.size[1] and self.barriers[px_2][py_2] != 1 \
                             and vis_2[px_2][py_2] != -1:
                         h = self.g(point)
                         bisect.insort(standby_2,
@@ -471,4 +508,211 @@ class PPA(object):
         return path
 
     def jps(self):
-        pass
+        """
+            func: jsp(跳点算法)
+            introduce:
+                definition 1: 强迫邻居 (forced neighbour)
+                    如果节点 n是 x的邻居，并且节点n的邻居有阻挡（不可行走的格子），并且从 parent(x)、x、n的路径长度比其他任何从
+                    parent(x)到 n且不经过x的路径短，其中 parent(x)为路径中 x的前一个点，则 n为 x的强迫邻居，x为 n的跳点
+                definition 2: 跳点 (jump point)
+                    1) 起点和终点为跳点
+                    2) 如果 y点有强迫邻居，则 y点是跳点
+                    3) 如果 parent(y)到 y是对角线移动，并且 y经过水平或垂直方向移动可以到达跳点，则 y是跳点
+                regulation 1: 先搜索直线方向，在搜索对角方向
+                regulation 2:
+                    1) 如果从 parent(x)到 x是直线移动，n是 x的邻居，若有从 parent(x)到 n的路径不经过 x且路径长度小于或等于从
+                    parent(x)经过x到n的路径，则走到x后下一个点不会走到n；
+                    2) 如果从parent(x)到 x是对角线移动，n是 x的邻居，若有从 parent(x)到 n的路径不经过x且路径长度小于从
+                    parent(x)经过 x到 n的路径，则走到x后下一个点不会走到 n
+                regulation 3: 只有跳点才会加入opendict，因为跳点会改变行走方向，而非跳点不会改变行走方向
+
+            TODO:
+                1. 首先对于规则 (2)，必须根据它的所有方向指定8种规则去确定它是否为跳点
+                    <水平竖直线>: 当前方遇到障碍物时停止移动
+                    (↑): 当第n个点左边或右边有障碍物时该点为跳点，且该点父节点也为跳点
+                    (↓): 当第n个点左边或右边有障碍物时该点为跳点，且该点父节点也为跳点
+                    (←): 当第n个点上边或下边有障碍物时该点为跳点，且该点父节点也为跳点
+                    (→): 当第n个点上边或下边有障碍物时该点为跳点，且该点父节点也为跳点
+                    <对角线>: 当对角线方向遇到障碍物时停止递归
+                    (↗): 不朝下和左走，当左边或下边有障碍物时该点为跳点
+                    (↘): 不朝上和左走，当左边或上边有障碍物时该点为跳点
+                    (↖): 不朝下和右走，当右边或下边有障碍物时该点位跳点
+                    (↙): 不朝上和右走，当右边或上边有障碍物时该点为跳点
+                2. 初始化
+                    1) 编号: 按顺序依次为: directions = [0, 1, ..., 7]
+                    2) close_dict{current: [parent, direction, fitness]}
+                3. 我认为对于每一波跳点的寻找应该需要使用递归函数才行
+
+                TODO:
+                    1. 修改边缘行走时的 bug ✔
+                    2. 完善其余情况...
+        """
+        close_dict = {self.start: [None, None, 0]}
+        open_list = []
+        current = self.start
+        vis = [[0] * self.size[1] for _ in range(self.size[0])]
+        neighbors = None
+
+        while True:
+            x, y = math.floor(current[0]), math.floor(current[1])
+            if vis[x][y] != -1:
+                self.__search_jump(current=current, parent=close_dict[current][0], direction=close_dict[current][1],
+                                   open_list=open_list, close_list=close_dict, is_jump=True, neighbors=neighbors)
+                vis[x][y] = -1
+            if self.end in close_dict:
+                break
+            best = open_list[0]
+            open_list = open_list[1:]
+
+            if best[0] <= close_dict.get(best[3], [None, None, math.inf])[2]:
+                close_dict[best[3]] = [best[2], best[4], best[0] - best[1]]
+                current = best[3]
+                neighbors = best[-1]
+
+            self.queue.put([[current], 0])
+        path = [self.end]
+
+        while path[-1] != self.start:
+            path.append(close_dict.get(path[-1])[0])
+            self.queue.put([list(close_dict.keys()), 0])
+
+        self.queue.put([path, 1])
+
+        return path[::-1]
+
+    def __get_enforce_neighbor(self, current, direction):
+        neighbors = []
+        direct = self.jps_all_barriers[direction]
+        neighbor = self.jps_all_neighbors[direction]
+        for i in range(2):
+            point = tuple(
+                [current[0] + self.jps_direction[direct[i]][0], current[1] + self.jps_direction[direct[i]][1]])
+            if 0 < point[0] < self.size[0] and 0 < point[1] < self.size[1] and self.barriers[math.floor(point[0])][
+                math.floor(point[1])]:
+                neighbors.append(neighbor[i])
+
+        return neighbors
+
+    def __horizon_do(self, current, parent, direction, before_parent, before_direction, open_list, close_list):
+        if current == self.end:
+            if before_parent is not None:
+                close_list[parent] = [before_parent, before_direction,
+                                      close_list[before_parent][2] + self.d(parent, before_parent)]
+                close_list[current] = [parent, direction, close_list[parent][2] + self.d(current, parent)]
+            else:
+                close_list[current] = [parent, direction, close_list[parent][2] + self.d(current, parent)]
+            return True
+        neighbors = self.__get_enforce_neighbor(current, direction)
+        if neighbors != []:
+            neighbors.append(direction)
+            h = self.h(current)
+            if before_parent is not None:
+                close_list[parent] = [before_parent, before_direction,
+                                      close_list[before_parent][2] + self.d(parent, before_parent)]
+                bisect.insort(open_list,
+                              [self.d(current, parent) + close_list[parent][2] + h, h, parent, current, direction,
+                               neighbors])
+            else:
+                bisect.insort(open_list,
+                              [self.d(current, parent) + close_list[parent][2] + h, h, parent, current,
+                               direction, neighbors])
+            return True
+
+        return False
+
+    def __corner_do(self, current, parent, direction, open_list, close_list):
+        neighbors = self.__get_enforce_neighbor(current, direction)
+        if current == self.end:
+            close_list[current] = [parent, direction, close_list[parent][2] + self.d(current, parent)]
+        elif neighbors != []:
+            neighbors.extend(self.corner_go[direction - 4])
+            neighbors.append(direction)
+            h = self.h(current)
+            bisect.insort(open_list,
+                          [self.d(current, parent) + close_list[parent][2] + h, h, parent, current, direction,
+                           neighbors])
+        else:
+            for i in self.corner_go[direction - 4]:
+                self.__search_jump(
+                    current=tuple([current[0] + self.jps_direction[i][0], current[1] + self.jps_direction[i][1]]),
+                    parent=current,
+                    direction=i,
+                    open_list=open_list,
+                    close_list=close_list,
+                    before_direction=direction,
+                    before_parent=parent
+                )
+            self.__search_jump(
+                current=tuple(
+                    [current[0] + self.jps_direction[direction][0], current[1] + self.jps_direction[direction][1]]),
+                parent=parent,
+                direction=direction,
+                open_list=open_list,
+                close_list=close_list
+            )
+
+    def __search_jump(self, current, parent, direction, open_list, close_list, before_direction=None,
+                      before_parent=None, is_jump=False, neighbors=None):
+        go_stack = []
+        x, y = math.floor(current[0]), math.floor(current[1])
+        if is_jump is True:
+            if current == self.start:
+                go_stack.extend(range(7))
+            else:
+                go_stack.extend(neighbors)
+            for i in go_stack:
+                direct = self.jps_direction[i]
+                point = tuple([current[0] + direct[0], current[1] + direct[1]])
+                self.__search_jump(
+                    current=point,
+                    parent=current,
+                    direction=i,
+                    open_list=open_list,
+                    close_list=close_list,
+                )
+        else:
+            direct = self.jps_direction[direction]
+            if direction == 0:
+                while current[1] < self.size[1] and not self.barriers[x][y]:
+                    if self.__horizon_do(current, parent, direction, before_parent, before_direction, open_list,
+                                         close_list):
+                        break
+                    x += direct[0]
+                    y += direct[1]
+                    current = tuple([current[0] + direct[0], current[1] + direct[1]])
+            elif direction == 1:
+                while current[1] > 0 and not self.barriers[x][y]:
+                    if self.__horizon_do(current, parent, direction, before_parent, before_direction, open_list,
+                                         close_list):
+                        break
+                    x += direct[0]
+                    y += direct[1]
+                    current = tuple([current[0] + direct[0], current[1] + direct[1]])
+            elif direction == 2:
+                while current[0] > 0 and not self.barriers[x][y]:
+                    if self.__horizon_do(current, parent, direction, before_parent, before_direction, open_list,
+                                         close_list):
+                        break
+                    x += direct[0]
+                    y += direct[1]
+                    current = tuple([current[0] + direct[0], current[1] + direct[1]])
+            elif direction == 3:
+                while current[0] < self.size[0] and not self.barriers[x][y]:
+                    if self.__horizon_do(current, parent, direction, before_parent, before_direction, open_list,
+                                         close_list):
+                        break
+                    x += direct[0]
+                    y += direct[1]
+                    current = tuple([current[0] + direct[0], current[1] + direct[1]])
+            elif direction == 4:
+                if current[0] < self.size[0] and current[1] < self.size[1] and not self.barriers[x][y]:
+                    self.__corner_do(current, parent, direction, open_list, close_list)
+            elif direction == 5:
+                if current[0] < self.size[0] and current[1] > 0 and not self.barriers[x][y]:
+                    self.__corner_do(current, parent, direction, open_list, close_list)
+            elif direction == 6:
+                if current[0] > 0 and current[1] < self.size[1] and not self.barriers[x][y]:
+                    self.__corner_do(current, parent, direction, open_list, close_list)
+            else:
+                if current[0] > 0 and current[1] > 0 and not self.barriers[x][y]:
+                    self.__corner_do(current, parent, direction, open_list, close_list)

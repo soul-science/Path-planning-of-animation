@@ -16,7 +16,7 @@
             Image: PIL, Numpy
         初步思路:
             top1: 使用tkinter 与 matplotlib 配合完成迷宫的绘制(包含障碍物的设置和清除，起点和终点的设置)，路径规划动画化的推演
-            top2: 对灰度图片的推演.
+            top2: 对灰度图片的推演.(未完成)
             top3: 没想到
 """
 
@@ -32,9 +32,9 @@ import numpy as np
 
 
 from .pathAnalyzer import PathAnalyzer
-from .threadkiller import stop_thread
+from .processkiller import stop_process
 from .ppa import PPA
-from .tqueue import Queue
+from multiprocessing import Queue
 
 
 mpl.rcParams['font.sans-serif'] = ['SimHei']  # 中文显示
@@ -70,7 +70,7 @@ class Maze(object):
         self.parent = parent
         self.width = width
         self.height = height
-        self.queue = Queue()
+        self.send, self.receive = parent.send, parent.receive
         self.start = None
         self.end = None
         self.barriers = []
@@ -79,8 +79,6 @@ class Maze(object):
         self.flag = False
         self.num = num
         self.grid_off = grid_off
-
-        self.analyzer = None
 
         self.fig = plt.figure(num=num, figsize=(self.width // 3, self.height // 3))
         self.fig.canvas.manager.set_window_title('maze_{num}'.format(num=self.num))
@@ -99,10 +97,11 @@ class Maze(object):
         self.ax.set_xticks((0, self.width))
         self.ax.set_yticks((0, self.height))
 
-        if self.grid_off is False:
-            miloc = plt.MultipleLocator(1)
-            self.ax.xaxis.set_minor_locator(miloc)
-            self.ax.yaxis.set_minor_locator(miloc)
+        if not self.grid_off:
+            xmiloc = plt.MultipleLocator(1)
+            ymiloc = plt.MultipleLocator(1)
+            self.ax.xaxis.set_minor_locator(xmiloc)
+            self.ax.yaxis.set_minor_locator(ymiloc)
             self.ax.grid(axis='both', which='minor')
         else:
             self.ax.grid(False)
@@ -230,8 +229,8 @@ class Maze(object):
         plt.show()
 
     def draw(self):
-        if not self.queue.empty():
-            points, flag = self.queue.get()
+        if not self.send.empty():
+            points, flag = self.send.get_nowait()
             if flag == 0:
                 for point in points:
                     if point != self.start[0] and point != self.end[0] and point not in [each[0] for each in self.gone]:
@@ -250,24 +249,20 @@ class Maze(object):
         while self.flag is False:
             self.draw()
 
-    def close(self, event=1):
+    def close(self, event=0):
         self.flag = True
-        if self.analyzer is not None and self.analyzer.is_alive():
-            stop_thread(self.analyzer)
+        self.receive.put(["stop_thread", 0])
         plt.close(fig=self.num)
 
-    def run(self, method, sqrt):
-        self.analyzer = PathAnalyzer(
-            queue=self.queue,
-            size=(self.width, self.height),
-            start=self.start[0], end=self.end[0],
-            barriers=self.barriers,
-            sqrt=sqrt, method=method)
-        self.analyzer.start()
+    def run(self, sqrt, method):
+        self.receive.put([[(self.width, self.height), self.start[0], self.end[0], self.barriers, sqrt, method], 1])
 
 
 class MazeGenerator(object):
-    normal = {'__module__', '__init__', 'set', '__dict__', '__weakref__', '__doc__', '_PPA__bfs', '_PPA__dfs'}
+    normal = {
+        '__module__', '__init__', 'set', '__dict__', '__weakref__', '__doc__',
+        '_PPA__bfs', '_PPA__dfs', 'd', 'g', 'h', '_PPA__search_jump', '_PPA__horizon_do',
+        '_PPA__get_enforce_neighbor', '_PPA__corner_do'}
 
     def __init__(self):
         self.main = tk.Tk()  # 创建主窗口
@@ -288,9 +283,18 @@ class MazeGenerator(object):
         self.maze = None
         self.num = 0
 
+        self.send, self.receive = Queue(), Queue()
+
+        self.analyzer = PathAnalyzer(
+            send=self.send,
+            receive=self.receive
+        )
+        self.analyzer.start()
+
     def initialize(self):
         self.main.title("Path planning of animation")  # 窗口标题
         self.main.iconbitmap("./util/favicon.ico")
+        self.main.protocol("WM_DELETE_WINDOW", self.quit)
         self.main.withdraw()  # 隐藏窗口
         self.main.update_idletasks()  # 刷新窗口
         self.main.geometry('%dx%d+%d+%d' % (self.width, self.height,
@@ -348,7 +352,6 @@ class MazeGenerator(object):
     def create_maze(self):
         if self.maze is not None and plt.fignum_exists(self.num):
             self.maze.close()
-            plt.close(fig=self.num)
 
         self.num += 1
         self.maze = Maze(self, self.w.get(), self.h.get(), self.num)
@@ -357,7 +360,6 @@ class MazeGenerator(object):
     def create_image_maze(self):
         if self.maze is not None and plt.fignum_exists(self.num):
             self.maze.close()
-            plt.close(fig=self.num)
 
     def logs_add(self, func, time_, length, path):
         self.logs_box.insert(
@@ -376,8 +378,6 @@ class MazeGenerator(object):
 
     def run_method(self):
         if self.maze is not None and plt.fignum_exists(self.num):
-            if self.maze.analyzer is not None and self.maze.analyzer.is_alive():
-                stop_thread(self.maze.analyzer)
             try:
                 self.maze.run(method=self.func_value.get(), sqrt=self.distance_value.get())
             except Exception:
@@ -387,6 +387,9 @@ class MazeGenerator(object):
 
     def quit(self):
         if messagebox.askokcancel("提示", "确定要关闭窗口吗?"):
+            if self.maze is not None and plt.fignum_exists(self.num):
+                self.maze.close()
+            stop_process(self.analyzer.pid)
             self.main.destroy()
 
     def run(self):
