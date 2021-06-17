@@ -66,7 +66,7 @@ def mypause(interval):
 
 
 class Maze(object):
-    def __init__(self, parent, width, height, num, grid_off=False):
+    def __init__(self, parent, width, height, num, img=None, grid_off=False):
         self.parent = parent
         self.width = width
         self.height = height
@@ -78,6 +78,7 @@ class Maze(object):
         self.gone = []
         self.flag = False
         self.num = num
+        self.img = img
         self.grid_off = grid_off
 
         self.fig = plt.figure(num=num, figsize=(self.width // 3, self.height // 3))
@@ -106,10 +107,17 @@ class Maze(object):
         else:
             self.ax.grid(False)
 
-        plt.show()
+        if self.img is not None:
+            for i in range(self.height):
+                for j in range(self.width):
+                    if self.img[i][j] != 0:
+                        rgb = self.img[i][j] / 255
+                        point = tuple(np.floor([j, self.height - i]) + 0.5)
+                        self.barriers.append(point)
+                        self.barriers_pos.append(len(self.ax.artists))
+                        self.draw_rect(point, (rgb, rgb, rgb))
 
-    def set(self, barriers=None):
-        self.barriers = barriers
+        plt.show()
 
     def draw_circle(self, point, color):
         circle = plt.Circle(point, 0.43, color=color)
@@ -192,6 +200,7 @@ class Maze(object):
             index = -1
 
         if index != -1:
+            print(point)
             self.start = self.cmp(self.start, [self.barriers[index], self.barriers_pos[index]])
             self.end = self.cmp(self.end, [self.barriers[index], self.barriers_pos[index]])
             for i in range(len(self.gone)):
@@ -360,6 +369,12 @@ class MazeGenerator(object):
     def create_image_maze(self):
         if self.maze is not None and plt.fignum_exists(self.num):
             self.maze.close()
+        img = Image.open(filedialog.askopenfilename(title=u'选择图片')).convert('L')
+        img = np.array(img.resize((img.size[0]//2, img.size[1]//2)))
+        self.num += 1
+        self.maze = Maze(self, img.shape[1], img.shape[0], self.num, img=img)
+        self.maze.loop()
+
 
     def logs_add(self, func, time_, length, path):
         self.logs_box.insert(
