@@ -41,10 +41,8 @@ class PPA(object):
         self.barriers = None
         self.sqrt = None
         self.directions = {1: [[-1, 0], [1, 0], [0, -1], [0, 1]],
-                           2: [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1], [-1, 1], [1, -1], [-1, -1]]}
-
-        self.jps_direction = [(0, 1), (0, -1), (-1, 0), (1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
-        self.jps_all_barriers = [
+                           2: [[0, 1], [0, -1], [-1, 0], [1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]}
+        self.all_barriers = [
             [3, 2],
             [3, 2],
             [0, 1],
@@ -54,6 +52,7 @@ class PPA(object):
             [3, 1],
             [3, 0]
         ]
+        self.jps_direction = [(0, 1), (0, -1), (-1, 0), (1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
         self.jps_all_neighbors = [
             [4, 6],
             [5, 7],
@@ -131,15 +130,24 @@ class PPA(object):
             y = math.floor(current[1])
             if vis[x][y] != -1 and current and self.barriers[x][y] != 1:
                 points = []
-                for direction in self.directions[self.sqrt]:
-                    point = (current[0] + direction[0], current[1] + direction[1])
+                direction = self.directions[self.sqrt]
+                for i in range(len(direction)):
+                    point = (current[0] + direction[i][0], current[1] + direction[i][1])
                     p_x = math.floor(point[0])
                     p_y = math.floor(point[1])
                     if 0 <= point[0] < self.size[0] and 0 <= point[1] < self.size[1] \
                             and self.barriers[p_x][p_y] != 1 and vis[p_x][p_y] != -1:
-                        bisect.insort(standby, [line[current][1] + self.d(point, current), tuple(current), point])
+                        barriers_direction = self.all_barriers[i]
+                        if i < 4 or not (
+                                self.barriers[p_x + self.directions[2][barriers_direction[0]][0]][
+                                    p_y + self.directions[2][barriers_direction[0]][1]]
+                                and
+                                self.barriers[p_x + self.directions[2][barriers_direction[1]][0]][
+                                    p_y + self.directions[2][barriers_direction[1]][1]]
+                        ):
+                            bisect.insort(standby, [line[current][1] + self.d(point, current), tuple(current), point])
 
-                        points.append(point)
+                            points.append(point)
                 if points != []:
                     self.queue.put([points, 0])
 
@@ -209,21 +217,31 @@ class PPA(object):
             x, y = math.floor(each[-1][0]), math.floor(each[-1][1])
             xys.add((x, y))
             if vis[x][y] != 1 and self.barriers[x][y] != 1:
-                for direction in self.directions[self.sqrt]:
-                    point = (each[-1][0] + direction[0], each[-1][1] + direction[1])
+                direction = self.directions[self.sqrt]
+                for i in range(len(direction)):
+                    point = (each[-1][0] + direction[i][0], each[-1][1] + direction[i][1])
                     p_x, p_y = math.floor(point[0]), math.floor(point[1])
                     if point == self.end:
                         flag = True
                     if 0 <= point[0] < self.size[0] and 0 <= point[1] < self.size[1] \
                             and self.barriers[p_x][p_y] != 1 and vis[p_x][p_y] != -1:
-                        new = each.copy()
-                        new.append(point)
-                        new_path.append(new)
-                        points.append(point)
+                        barriers_direction = self.all_barriers[i]
+                        if i < 4 or not (
+                                self.barriers[p_x + self.directions[2][barriers_direction[0]][0]][
+                                    p_y + self.directions[2][barriers_direction[0]][1]]
+                                and
+                                self.barriers[p_x + self.directions[2][barriers_direction[1]][0]][
+                                    p_y + self.directions[2][barriers_direction[1]][1]]
+                        ):
+                            new = each.copy()
+                            new.append(point)
+                            new_path.append(new)
+                            points.append(point)
             for xy in xys:
                 vis[xy[0]][xy[1]] = -1
 
-        self.queue.put([list(set(points)), 0])
+        if points != []:
+            self.queue.put([list(set(points)), 0])
 
         if flag is True:
             new_path.append([self.end])
@@ -258,17 +276,26 @@ class PPA(object):
             self.queue.put([path, 1])
             return path
 
-        for direction in self.directions[self.sqrt]:
-            point = (path[-1][0] + direction[0], path[-1][1] + direction[1])
+        direction = self.directions[self.sqrt]
+        for i in range(len(direction)):
+            point = (path[-1][0] + direction[i][0], path[-1][1] + direction[i][1])
             p_x, p_y = math.floor(point[0]), math.floor(point[1])
             if 0 <= point[0] < self.size[0] and 0 <= point[1] < self.size[1] and self.barriers[p_x][
                 p_y] != 1 and point not in path:
-                path.append(point)
-                self.queue.put([[point], 0])
-                first = self.__dfs(path.copy())
-                if first is not None:
-                    return first
-                path.pop()
+                barriers_direction = self.all_barriers[i]
+                if i < 4 or not (
+                        self.barriers[p_x + self.directions[2][barriers_direction[0]][0]][
+                            p_y + self.directions[2][barriers_direction[0]][1]]
+                        and
+                        self.barriers[p_x + self.directions[2][barriers_direction[1]][0]][
+                            p_y + self.directions[2][barriers_direction[1]][1]]
+                ):
+                    path.append(point)
+                    self.queue.put([[point], 0])
+                    first = self.__dfs(path.copy())
+                    if first is not None:
+                        return first
+                    path.pop()
 
     def best_fs(self):
         """
@@ -294,13 +321,22 @@ class PPA(object):
             middle = []
             x = math.floor(current[0])
             y = math.floor(current[1])
-            for direction in self.directions[self.sqrt]:
-                point = (current[0] + direction[0], current[1] + direction[1])
+            direction = self.directions[self.sqrt]
+            for i in range(len(direction)):
+                point = (current[0] + direction[i][0], current[1] + direction[i][1])
                 p_x, p_y = math.floor(point[0]), math.floor(point[1])
                 if 0 <= point[0] < self.size[0] and 0 <= point[1] < self.size[1] and self.barriers[p_x][p_y] != 1 \
                         and vis[p_x][p_y] != -1:
-                    bisect.insort(standby, [self.h(point), tuple(point)])
-                    middle.append(tuple(point))
+                    barriers_direction = self.all_barriers[i]
+                    if i < 4 or not (
+                            self.barriers[p_x + self.directions[2][barriers_direction[0]][0]][
+                                p_y + self.directions[2][barriers_direction[0]][1]]
+                            and
+                            self.barriers[p_x + self.directions[2][barriers_direction[1]][0]][
+                                p_y + self.directions[2][barriers_direction[1]][1]]
+                    ):
+                        bisect.insort(standby, [self.h(point), tuple(point)])
+                        middle.append(tuple(point))
             if middle != []:
                 self.queue.put([middle, 0])
             vis[x][y] = -1
@@ -341,16 +377,25 @@ class PPA(object):
             y = math.floor(current[1])
             if vis[x][y] != -1 and self.barriers[x][y] != 1:
                 points = []
-                for direction in self.directions[self.sqrt]:
-                    point = (current[0] + direction[0], current[1] + direction[1])
+                direction = self.directions[self.sqrt]
+                for i in range(len(direction)):
+                    point = (current[0] + direction[i][0], current[1] + direction[i][1])
                     p_x = math.floor(point[0])
                     p_y = math.floor(point[1])
                     if 0 <= point[0] < self.size[0] and 0 <= point[1] < self.size[1] \
                             and self.barriers[p_x][p_y] != 1 and vis[p_x][p_y] != -1:
-                        h = self.h(point)
-                        bisect.insort(standby,
-                                      [line[current][1] + self.d(point, current) + h, h, tuple(current), point])
-                        points.append(point)
+                        barriers_direction = self.all_barriers[i]
+                        if i < 4 or not (
+                                self.barriers[p_x + self.directions[2][barriers_direction[0]][0]][
+                                    p_y + self.directions[2][barriers_direction[0]][1]]
+                                and
+                                self.barriers[p_x + self.directions[2][barriers_direction[1]][0]][
+                                    p_y + self.directions[2][barriers_direction[1]][1]]
+                        ):
+                            h = self.h(point)
+                            bisect.insort(standby,
+                                          [line[current][1] + self.d(point, current) + h, h, tuple(current), point])
+                            points.append(point)
                 if points != []:
                     self.queue.put([points, 0])
 
@@ -400,26 +445,43 @@ class PPA(object):
             x_2, y_2 = math.floor(current_2[0]), math.floor(current_2[1])
 
             points = []
-            for direction in self.directions[self.sqrt]:
+            direction = self.directions[self.sqrt]
+            for i in range(len(direction)):
                 if vis_1[x_1][y_1] != -1 and self.barriers[x_1][y_1] != 1:
-                    point = (current_1[0] + direction[0], current_1[1] + direction[1])
+                    point = (current_1[0] + direction[i][0], current_1[1] + direction[i][1])
                     px_1, py_1 = math.floor(point[0]), math.floor(point[1])
                     if 0 <= point[0] < self.size[0] and 0 <= point[1] < self.size[1] and self.barriers[px_1][py_1] != 1 \
                             and vis_1[px_1][py_1] != -1:
-                        h = self.h(point)
-                        bisect.insort(standby_1,
-                                      [line_1[current_1][1] + self.d(point, current_1) + h, h, tuple(current_1), point])
-                        points.append(point)
+                        barriers_direction = self.all_barriers[i]
+                        if i < 4 or not (
+                                self.barriers[px_1 + self.directions[2][barriers_direction[0]][0]][
+                                    py_1 + self.directions[2][barriers_direction[0]][1]]
+                                and
+                                self.barriers[px_1 + self.directions[2][barriers_direction[1]][0]][
+                                    py_1 + self.directions[2][barriers_direction[1]][1]]
+                        ):
+                            h = self.h(point)
+                            bisect.insort(standby_1,
+                                          [line_1[current_1][1] + self.d(point, current_1) + h, h, tuple(current_1), point])
+                            points.append(point)
 
                 if vis_2[x_2][y_2] != -1 and self.barriers[x_2][y_2] != 1:
-                    point = (current_2[0] + direction[0], current_2[1] + direction[1])
+                    point = (current_2[0] + direction[i][0], current_2[1] + direction[i][1])
                     px_2, py_2 = math.floor(point[0]), math.floor(point[1])
                     if 0 <= point[0] < self.size[0] and 0 <= point[1] < self.size[1] and self.barriers[px_2][py_2] != 1 \
                             and vis_2[px_2][py_2] != -1:
-                        h = self.g(point)
-                        bisect.insort(standby_2,
-                                      [line_2[current_2][1] + self.d(point, current_2) + h, h, tuple(current_2), point])
-                        points.append(point)
+                        barriers_direction = self.all_barriers[i]
+                        if i < 4 or not (
+                                self.barriers[px_2 + self.directions[2][barriers_direction[0]][0]][
+                                    py_2 + self.directions[2][barriers_direction[0]][1]]
+                                and
+                                self.barriers[px_2 + self.directions[2][barriers_direction[1]][0]][
+                                    py_2 + self.directions[2][barriers_direction[1]][1]]
+                        ):
+                            h = self.g(point)
+                            bisect.insort(standby_2,
+                                          [line_2[current_2][1] + self.d(point, current_2) + h, h, tuple(current_2), point])
+                            points.append(point)
 
             if points != []:
                 self.queue.put([points, 0])
@@ -582,7 +644,7 @@ class PPA(object):
 
     def __get_enforce_neighbor(self, current, direction):
         neighbors = []
-        direct = self.jps_all_barriers[direction]
+        direct = self.all_barriers[direction]
         neighbor = self.jps_all_neighbors[direction]
         for i in range(2):
             point = tuple(
@@ -624,32 +686,34 @@ class PPA(object):
         neighbors = self.__get_enforce_neighbor(current, direction)
         if current == self.end:
             close_list[current] = [parent, direction, close_list[parent][2] + self.d(current, parent)]
-        elif neighbors != []:
-            neighbors.extend(self.corner_go[direction - 4])
-            neighbors.append(direction)
-            h = self.h(current)
-            bisect.insort(open_list,
-                          [self.d(current, parent) + close_list[parent][2] + h, h, parent, current, direction,
-                           neighbors])
         else:
-            for i in self.corner_go[direction - 4]:
+            length = len(neighbors)
+            if length == 1:
+                neighbors.extend(self.corner_go[direction - 4])
+                neighbors.append(direction)
+                h = self.h(current)
+                bisect.insort(open_list,
+                              [self.d(current, parent) + close_list[parent][2] + h, h, parent, current, direction,
+                               neighbors])
+            elif length == 0:
+                for i in self.corner_go[direction - 4]:
+                    self.__search_jump(
+                        current=tuple([current[0] + self.jps_direction[i][0], current[1] + self.jps_direction[i][1]]),
+                        parent=current,
+                        direction=i,
+                        open_list=open_list,
+                        close_list=close_list,
+                        before_direction=direction,
+                        before_parent=parent
+                    )
                 self.__search_jump(
-                    current=tuple([current[0] + self.jps_direction[i][0], current[1] + self.jps_direction[i][1]]),
-                    parent=current,
-                    direction=i,
+                    current=tuple(
+                        [current[0] + self.jps_direction[direction][0], current[1] + self.jps_direction[direction][1]]),
+                    parent=parent,
+                    direction=direction,
                     open_list=open_list,
-                    close_list=close_list,
-                    before_direction=direction,
-                    before_parent=parent
+                    close_list=close_list
                 )
-            self.__search_jump(
-                current=tuple(
-                    [current[0] + self.jps_direction[direction][0], current[1] + self.jps_direction[direction][1]]),
-                parent=parent,
-                direction=direction,
-                open_list=open_list,
-                close_list=close_list
-            )
 
     def __search_jump(self, current, parent, direction, open_list, close_list, before_direction=None,
                       before_parent=None, is_jump=False, neighbors=None):
