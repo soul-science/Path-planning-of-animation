@@ -1,5 +1,15 @@
 """
-    A class, a multiple thread, is used to analyze the path of mazes created by users according to the algorithm.
+    Module: mazeGenerator
+    Author: ShaoHaozhou
+    motto: Self-discipline, self-improvement, self-love
+    Date: 2021/6/18
+    Introduce: Two classes, a multiple thread and a multiprocess,
+     used to analyze the path of mazes created by users according to the algorithm.
+    介绍:
+        SingleRunner: 用来运行单次的路径规划
+        PathAnalyzer: 作为主程序的子进程进行整个路径规划工作
+    初衷:
+        为了提高效率才搞了这两个类，，本来搞得多线程，结果一卡一卡的；然后又换成多进程，又不能同时进行了；最后结合起来还阔以。
 """
 
 from multiprocessing import Process
@@ -12,6 +22,9 @@ import time
 
 
 class SingleRunner(Thread):
+    """
+        单个线程, 运行PPA类进行一次性的路径规划
+    """
     def __init__(self, send, size, start, end, barriers, sqrt, method):
         super().__init__()
         self.send = send

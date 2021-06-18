@@ -1,9 +1,17 @@
 """
-    A class containing a great deal of path planning algorithms is used to calculates the best path and distance from start to end.
+    Module: mazeGenerator
+    Author: ShaoHaozhou
+    motto: Self-discipline, self-improvement, self-love
+    Date: 2021/6/18
+    Introduce: A class containing a great deal of path planning algorithms is used to calculates
+     the best path and distance from start to end.
+    介绍: 路径规划算法集合类，根据管道进行结果的传输(可改)...
+
     TODO:
         路径规划算法:
             func:
                 Dijkstra
+                BFS(Best First Search)
                 BFS
                 DFS
                 A-Star
@@ -25,12 +33,15 @@ class PPA(object):
         路径规划算法集合(PPA)
         Contains:
             Dijkstra
-            BFS
-            DFS
-            A-Star
-            DA-Star
-            Faa(No Barriers)
-            JPS(Jump Search)
+            BFS(Best First Search)[最佳优先算法]
+            BFS(广度优先搜索算法)
+            DFS(深度优先搜索算法)
+            A-Star(A*搜索算法)
+            DA-Star(首尾 A*搜索算法)
+            Faa(No Barriers)[无障碍物条件判断算法]
+            JPS(Jump Search)[跳点搜索算法]<只能为欧氏距离>
+        可改进:
+            如果需要更高效率可做改进 d, h, g 函数
     """
 
     def __init__(self, queue):
@@ -426,7 +437,9 @@ class PPA(object):
                         else: => continue
 
                 step3:  返回最优路径
-
+            TODO:
+                有瑕疵，因为首尾A*算法目标不同，有小概率情况可能不是最优路径，如果要改进则目标点必须相同，
+                意思就是要去找到一个处在最优路径上的一个点(至少一个点，看情况，通常越中间越好)……尚未修改
         """
 
         line_1 = {self.start: [None, 0]}
@@ -607,7 +620,7 @@ class PPA(object):
 
                 TODO:
                     1. 修改边缘行走时的 bug ✔
-                    2. 完善其余情况...
+                    2. 完善其余情况... ✔
         """
         close_dict = {self.start: [None, None, 0]}
         open_list = []

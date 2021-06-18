@@ -1,23 +1,11 @@
 """
-    A class called Maze Generator, having all functions in order to realize the visual path optimization, includes all packages written by author.
-
-    TODO(刚开始的思路):
-        迷宫生成器
-            func1: 制作一个n*n的方形矩阵
-            func2: 阔以通过输入设置起点和终点
-            func3: 阔以通过点击来设置障碍物
-        寻路测试器:
-            func1: 包含迷宫生成器
-            func2: 阔以设置寻路算法
-            func3: 根据算法模拟寻路过程，并且进行算法分析
-        选择库:
-            GUI: Tkinter and Matplotlib
-            Analysis: PPA
-            Image: PIL, Numpy
-        初步思路:
-            top1: 使用tkinter 与 matplotlib 配合完成迷宫的绘制(包含障碍物的设置和清除，起点和终点的设置)，路径规划动画化的推演
-            top2: 对灰度图片的推演.(未完成)
-            top3: 没想到
+    Module: mazeGenerator
+    Author: ShaoHaozhou
+    motto: Self-discipline, self-improvement, self-love
+    Date: 2021/6/18
+    Introduce: A class called Maze Generator, having all functions in order to realize the visual path optimization,
+        includes all packages written by author.
+    介绍: 一个称为迷宫生成器的类，具有实现可视化的路径优化的所有功能。
 """
 
 
