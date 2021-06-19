@@ -82,5 +82,5 @@
 
 ### 演示动画
 <img src="https://github.com/soul-science/Path-planning-of-animation/blob/main/images/video1.gif?raw=true" width="739" height="481" alt="video1.png" style="float: left;" />
-<!-- ![video1.gif](https://github.com/soul-science/Path-planning-of-animation/blob/main/images/video1.gif?raw=true) -->
+<img src="https://github.com/soul-science/Path-planning-of-animation/blob/main/images/video2.gif?raw=true" width="912" height="481" alt="video2.png" style="float: left;" />
 
