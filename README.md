@@ -78,7 +78,7 @@
 
 ### 程序主界面(理工男UI)
 
-<img src="https://github.com/soul-science/Path-planning-of-animation/blob/main/images/image1.png?raw=true" width="100" height="150" alt="float: left;" />
+<img src="https://github.com/soul-science/Path-planning-of-animation/blob/main/images/image1.png?raw=true" width="300" height="450" alt="float: left;" />
 
 ### 演示动画
 
