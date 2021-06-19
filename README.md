@@ -78,9 +78,9 @@
 
 ### 程序主界面(理工男UI)
 
-<img src="https://github.com/soul-science/Path-planning-of-animation/blob/main/images/image1.png?raw=true" width="300" height="450" alt="float: left;" />
+<img src="https://github.com/soul-science/Path-planning-of-animation/blob/main/images/image1.png?raw=true" width="300" height="450" alt="image1.png" style="float: left;" />
 
 ### 演示动画
-
-![video1.gif](https://github.com/soul-science/Path-planning-of-animation/blob/main/images/video1.gif?raw=true)
+<img src="https://github.com/soul-science/Path-planning-of-animation/blob/main/images/video1.gif?raw=true" width="300" height="450" alt="video1.png" style="float: left;" />
+<!-- ![video1.gif](https://github.com/soul-science/Path-planning-of-animation/blob/main/images/video1.gif?raw=true) -->
 
